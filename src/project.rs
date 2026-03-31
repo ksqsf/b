@@ -25,6 +25,14 @@ impl Project {
                 });
             }
 
+            if has_builddir(dirp)? {
+                debug!("select subproject {} because it has builddir", dirp.display());
+                return Ok(Project {
+                    topdir: dirp.to_path_buf(),
+                    builddir: dirp.join("build"),
+                });
+            }
+
             if is_git_repo_root(dirp)? {
                 debug!("found git repo at {}", dirp.display());
                 for sub in std::fs::read_dir(dirp)? {
@@ -73,6 +81,17 @@ impl Project {
 fn is_cmake_builddir(dirp: &Path) -> Result<bool, Error> {
     let testfile = dirp.join("CMakeCache.txt");
     Ok(testfile.exists())
+}
+
+fn has_builddir(dirp: &Path) -> Result<bool, Error> {
+    for sub in std::fs::read_dir(dirp)? {
+        let sub = sub?;
+        let sub = sub.path();
+        if sub.is_dir() && is_cmake_builddir(&sub).unwrap_or(false) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn is_git_repo_root(dirp: &Path) -> Result<bool, Error> {
